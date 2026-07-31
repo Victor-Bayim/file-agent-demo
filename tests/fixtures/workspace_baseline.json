@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "included_roots": [
+    "."
+  ],
+  "file_count": 32,
+  "files": [
+    {
+      "path": "data/2025-09-cloud-costs.csv",
+      "sha256": "e1dbd2b647cbf3c0ed478b66ea2e8bffdced1c0ef548170976a176e4e56cc58f"
+    },
+    {
+      "path": "data/2025-10-vendor-tracking.csv",
+      "sha256": "469ea403ac935e8b081326f61c2b97b003706c3f7c37be75c2416eaae20a8947"
+    },
+    {
+      "path": "drafts/api-v1-spec.md",
+      "sha256": "b21e4b8691ae8a64bb3aabc2695b998cd61ffe3d1bc24e42f072c3435e905315"
+    },
+    {
+      "path": "drafts/blog-post-launch.md",
+      "sha256": "cffb0973196deb9ddf6dea53ec9b1e02cdccb8db2a8621665e4d7c9ba1920471"
+    },
+    {
+      "path": "drafts/design-tokens.md",
+      "sha256": "55b749f32d8f7b20bcfac205c722756cb0843667f510a5579dc4813ed0e6631c"
+    },
+    {
+      "path": "drafts/onboarding-guide.md",
+      "sha256": "d3620941f87fb1e22827dd5b40635a37e38b70bb5fbea741e5a7810a88a6a8b5"
+    },
+    {
+      "path": "drafts/pricing-review-obsolete.md",
+      "sha256": "b64e4fad5f6438459902383dc0fcfa37627707c1081dad3eb0814573d247d006"
+    },
+    {
+      "path": "drafts/retention-policy.md",
+      "sha256": "b48e77176657131265c82446e27694052dc8f5c62dc9d573e6265444a9b281ed"
+    },
+    {
+      "path": "drafts/roadmap-2026.md",
+      "sha256": "b3f827460eb2bd8adde78b6302969fad63f6382b98138eae085ccad4c8619af5"
+    },
+    {
+      "path": "drafts/runbook-backup.md",
+      "sha256": "da69d0cb768d539dbbc903074fb193f6949e96abb894a9e1330f7db02182ad83"
+    },
+    {
+      "path": "logs/2025-09-deploy.log",
+      "sha256": "4120dac139978686ef37b879ca1643ddd11e1bba21cff83dc7bb0cf552a5d352"
+    },
+    {
+      "path": "logs/2025-12-full-export.log",
+      "sha256": "2e240ea401af40ea5e9261778c0a6b9fa192268a806da05240858183afe9b575"
+    },
+    {
+      "path": "logs/2026-01-cron.log",
+      "sha256": "1dad7dd250911b69e70e952776cea63e3d419e6ce3ddb491f430265fdd4a3118"
+    },
+    {
+      "path": "meetings/2025-09-04-migration-standup.md",
+      "sha256": "d28be1d98fcd0d9ca837c1329dab0e1dc318174a3523d61b3b28e21e566e505a"
+    },
+    {
+      "path": "meetings/2025-09-07-office-move.md",
+      "sha256": "87f8429f5d2f10ffb7447645aefe4d7701a47ce719ebc68136ba84f0889beaaa"
+    },
+    {
+      "path": "meetings/2025-09-14-q4-budget.md",
+      "sha256": "4682b2884a30b4e0f28dbb0a6b5abcad956840750d2a3b887d9771ce80a949ec"
+    },
+    {
+      "path": "meetings/2025-10-08-eng-sync.md",
+      "sha256": "343acc1d71c9aa259f86c4ed0b85af06d985ed03743fd3f8aa05dccfae1937e0"
+    },
+    {
+      "path": "meetings/2025-10-12-hiring-sync.md",
+      "sha256": "0570bc1da44ba5b1db4d050099c8e6a71756a698fa1398453a6d08866f481abd"
+    },
+    {
+      "path": "meetings/2025-11-13-data-review.md",
+      "sha256": "1509447537c1ad2fd99b3fa8226e173aa3241ceaa387a57f71c05c4e68db71c5"
+    },
+    {
+      "path": "meetings/2025-11-14-steering.md",
+      "sha256": "f8fc696bc50741a04ce8df3226a11df95db8e385a02ca2a67475d80688c64ac9"
+    },
+    {
+      "path": "meetings/2025-12-05-vendor-eval.md",
+      "sha256": "4ef0150ace43cc147f5002ac18ac0fdb40ab2c7ce81aeea9dcd665b3b26b14bb"
+    },
+    {
+      "path": "meetings/2025-12-07-platform-sync.md",
+      "sha256": "d76e1c10a6d4c5f766189eedded5425dd720e77a736e5f0048dc05f512f8a507"
+    },
+    {
+      "path": "meetings/2025-12-09-security-review.md",
+      "sha256": "61838ef47502d2f41c9818150cc7a9a09bc3dde7aa506b75bcb719e7e7a48e74"
+    },
+    {
+      "path": "meetings/2026-01-07-team-retro.md",
+      "sha256": "dbbd9476ba05d493b483c557076866095c28bcc09dfa0ba16603446d025557d0"
+    },
+    {
+      "path": "meetings/2026-01-14-cutover-planning.md",
+      "sha256": "c0cfb19ef0e05d4b8c4fd13bd964dffbca1b62d5e7fca93ca16b3a7d1b86aa70"
+    },
+    {
+      "path": "meetings/2026-01-22-all-hands.md",
+      "sha256": "1eadd216e91b79547ef3c7ba36d7233373f68ac667b38f25186b2757ce1b3945"
+    },
+    {
+      "path": "notes/birdwatching-weekend.md",
+      "sha256": "c6991043de96b55d068ff1e0d53844e310ceb3173fd0722ede332d7cd035d828"
+    },
+    {
+      "path": "notes/conference-takeaways.md",
+      "sha256": "26d012aa2df563718dc7b35c0a1d975a3ef7bf8d04c0a0b08f256a00e6765251"
+    },
+    {
+      "path": "notes/falcon-migration-checklist.md",
+      "sha256": "ea9365db4d9e288ad1c1e3ae4b0a00b095db8d03d26a711961d56565ab6ac8f7"
+    },
+    {
+      "path": "notes/gym-plan.md",
+      "sha256": "0b3ddb0488127acef7a4600e30393918f92fdf63f0758dce0565df8937fd6fcd"
+    },
+    {
+      "path": "notes/kitchen-duty-roster.md",
+      "sha256": "8faa8c48b3203ad36358e83deb62cb45b1ac955a8618dcec65dc8098402a5691"
+    },
+    {
+      "path": "notes/reading-list.md",
+      "sha256": "99149133de95d2b9c9216a322bb530406c33dae36850f6cbf69f940887972aba"
+    }
+  ]
+}

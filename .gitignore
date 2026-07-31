@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+.env
+trace.jsonl
+runs/
+runtime/
+*.pyc
+*.egg-info/
+.coverage
+htmlcov/

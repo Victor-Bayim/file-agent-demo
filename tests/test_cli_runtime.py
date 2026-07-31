@@ -320,7 +320,12 @@ def test_cli_task_file_reaches_fake_model_exactly_and_is_absent_from_trace(
     )
 
     assert exit_code == 0
-    assert model.calls[0].messages[1].content == task
+    user_message = model.calls[0].messages[1].content
+    assert user_message == task
+    assert '"double"' in user_message
+    assert "'single'" in user_message
+    assert "?" not in user_message
+    assert "\ufffd" not in user_message
     assert task not in trace.read_text(encoding="utf-8")
     assert task not in capsys.readouterr().out
 

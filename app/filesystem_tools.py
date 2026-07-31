@@ -49,7 +49,10 @@ class SearchTextArgs(ToolArguments):
     query: str = Field(
         min_length=1,
         max_length=500,
-        description="Exact text to find within each logical line.",
+        description=(
+            "Literal text to find within each logical line, used exactly as provided without "
+            "semantic expansion."
+        ),
     )
     path: str = Field(default=".", description="POSIX-relative file or directory path.")
     case_sensitive: bool = Field(default=True, description="Whether letter case must match.")
@@ -69,7 +72,10 @@ class SearchTextArgs(ToolArguments):
         default=50,
         ge=1,
         le=200,
-        description="Maximum individual matches to return.",
+        description=(
+            "Maximum individual matches to return; reaching the limit makes the scan "
+            "incomplete and truncated."
+        ),
     )
     max_snippet_chars: int = Field(
         default=500,
@@ -216,6 +222,20 @@ class FilesystemToolService:
                 truncated = True
                 break
 
+        scan_complete = not truncated
+        if scan_complete:
+            summary = (
+                f"Literal search completed: {len(files)} matching files and "
+                f"{returned_matches} matching occurrences; "
+                f"returned_matches={returned_matches}; scan_complete=true; truncated=false."
+            )
+        else:
+            summary = (
+                f"Literal search stopped at the result limit: observed {len(files)} matching "
+                f"files and {returned_matches} matching occurrences so far; "
+                f"returned_matches={returned_matches}; scan_complete=false; truncated=true."
+            )
+
         return _success(
             {
                 "files": files,
@@ -223,13 +243,10 @@ class FilesystemToolService:
                 "total_matches": returned_matches,
                 "total_files": len(files),
                 "truncated": truncated,
-                "scan_complete": not truncated,
+                "scan_complete": scan_complete,
                 "skipped_binary": sorted(skipped_binary),
             },
-            (
-                f"Found {returned_matches} matches across {len(files)} files; "
-                f"scan_complete={_json_bool(not truncated)}"
-            ),
+            summary,
         )
 
     def read_file(self, arguments: BaseModel) -> ToolExecutionResult:
@@ -837,8 +854,15 @@ def build_filesystem_registry(
             ToolSpec(
                 name="search_text",
                 description=(
-                    "Stream-search exact text in UTF-8 workspace files and return bounded snippets "
-                    "plus aggregate per-file and total match counts."
+                    "Stream-search literal text in UTF-8 workspace files, using query exactly as "
+                    "provided without semantic expansion. Top-level total_files counts files with "
+                    "at least one match, with each file counted once even when it has multiple "
+                    "matches. total_matches counts all matching occurrences. total_files and "
+                    "total_matches are complete when scan_complete=true. returned_matches is the "
+                    "number of individual matches "
+                    "returned. truncated=false means no tool result limit truncated the scan. "
+                    "Count-only tasks with a complete scan usually require no file reads. Do not "
+                    "automatically broaden a completed exact query."
                 ),
                 args_model=SearchTextArgs,
                 is_mutating=False,

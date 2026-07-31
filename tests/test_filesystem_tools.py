@@ -188,6 +188,69 @@ def test_search_text_counts_multiple_exact_matches_on_one_line(workspace: Path) 
     assert [match["line"] for match in data["files"][0]["matches"]] == [1, 1]
 
 
+def test_search_text_schema_explains_literal_and_aggregate_semantics(workspace: Path) -> None:
+    registry, _ = make_registry(workspace)
+    spec = registry.get("search_text")
+    description = spec.description
+    query_description = spec.json_schema()["properties"]["query"]["description"]
+
+    assert "using query exactly as provided without semantic expansion" in description
+    assert "total_files counts files with at least one match" in description
+    assert "each file counted once" in description
+    assert "total_matches counts all matching occurrences" in description
+    assert "returned_matches is the number" in description
+    assert "total_files and total_matches are complete when scan_complete=true" in description
+    assert "truncated=false" in description
+    assert "Count-only tasks" in description
+    assert "Do not automatically broaden" in description
+    assert "Literal text" in query_description
+    assert "without semantic expansion" in query_description
+    for seeded_value in ("Project Falcon", "Project Phoenix", "10 files", "14 matches"):
+        assert seeded_value not in description
+        assert seeded_value not in query_description
+
+
+def test_search_text_complete_result_summary_is_deterministic_and_aggregate(
+    workspace: Path,
+) -> None:
+    (workspace / "alpha.txt").write_text("token token\n", encoding="utf-8")
+    (workspace / "beta.txt").write_text("token\n", encoding="utf-8")
+    registry, _ = make_registry(workspace)
+
+    result = registry.execute("search_text", {"query": "token", "context_lines": 0})
+
+    assert result.ok is True
+    assert result.trust == "untrusted_workspace_data"
+    assert result.data is not None
+    assert result.data["total_files"] == 2
+    assert result.data["total_matches"] == 3
+    assert result.data["returned_matches"] == 3
+    assert result.data["scan_complete"] is True
+    assert result.data["truncated"] is False
+    assert result.result_summary == (
+        "Literal search completed: 2 matching files and 3 matching occurrences; "
+        "returned_matches=3; scan_complete=true; truncated=false."
+    )
+    assert "Project" not in result.result_summary
+
+
+def test_search_text_incomplete_summary_does_not_claim_complete_totals(workspace: Path) -> None:
+    (workspace / "many.txt").write_text("token\ntoken\n", encoding="utf-8")
+    registry, _ = make_registry(workspace)
+
+    result = registry.execute(
+        "search_text",
+        {"query": "token", "context_lines": 0, "max_results": 1},
+    )
+
+    assert result.ok is True
+    assert "stopped at the result limit" in result.result_summary
+    assert "so far" in result.result_summary
+    assert "scan_complete=false" in result.result_summary
+    assert "truncated=true" in result.result_summary
+    assert "search completed" not in result.result_summary.lower()
+
+
 def test_search_text_accepts_a_direct_file_and_rejects_unsafe_excludes(workspace: Path) -> None:
     (workspace / "direct.txt").write_text("direct match\n", encoding="utf-8")
     registry, _ = make_registry(workspace)

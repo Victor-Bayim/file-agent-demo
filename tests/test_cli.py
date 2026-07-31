@@ -21,6 +21,7 @@ def test_agent_help_is_available() -> None:
     for option in (
         "--workspace",
         "--task",
+        "--task-file",
         "--trace",
         "--max-turns",
         "--model",

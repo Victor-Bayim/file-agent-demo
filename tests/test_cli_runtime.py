@@ -7,8 +7,11 @@ from typing import Any
 import pytest
 
 import app.cli as cli_module
+from app.application import execute_task as application_execute_task
 from app.cli import main
+from app.model_types import ModelFinishReason, ModelMessage, ModelResponse, ModelRole, ModelUsage
 from app.runtime import AgentRunResult, AgentRunStatus, UsageStats
+from tests.fake_model import FakeModelClient
 
 
 @pytest.fixture(autouse=True)
@@ -267,3 +270,92 @@ def test_cli_overrides_are_validated_and_forwarded(
     assert captured["deepseek_config"].timeout_seconds == 8.5
     assert captured["limits"].max_model_turns == 7
     assert captured["limits"].max_total_tokens == 900
+
+
+def test_cli_task_file_reaches_fake_model_exactly_and_is_absent_from_trace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    trace = tmp_path / "trace.jsonl"
+    task_file = tmp_path / "task.txt"
+    task = "中文 \"double\" and 'single'\n  second line"
+    task_file.write_bytes((task + "\r\n").encode("utf-8"))
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "task-file-test-placeholder")
+    monkeypatch.setenv("DEEPSEEK_THINKING", "disabled")
+    model = FakeModelClient(
+        [
+            ModelResponse(
+                message=ModelMessage(role=ModelRole.ASSISTANT, content="Done."),
+                usage=ModelUsage(input_tokens=2, output_tokens=1, total_tokens=3, exact=True),
+                finish_reason=ModelFinishReason.STOP,
+                raw_finish_reason="stop",
+            )
+        ]
+    )
+
+    async def execute_with_fake_model(**kwargs: Any) -> AgentRunResult:
+        return await application_execute_task(
+            workspace=kwargs["workspace"],
+            task=kwargs["task"],
+            trace_path=kwargs["trace_path"],
+            limits=kwargs["limits"],
+            model_client=model,
+        )
+
+    monkeypatch.setattr(cli_module, "execute_task", execute_with_fake_model)
+
+    exit_code = main(
+        [
+            "--workspace",
+            str(workspace),
+            "--task-file",
+            str(task_file),
+            "--trace",
+            str(trace),
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    assert model.calls[0].messages[1].content == task
+    assert task not in trace.read_text(encoding="utf-8")
+    assert task not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected_code"),
+    [
+        (b"private task\x00suffix", "TASK_FILE_NUL"),
+        (b"private task\xffsuffix", "TASK_FILE_ENCODING"),
+    ],
+)
+def test_cli_task_file_json_errors_do_not_leak_content(
+    raw: bytes,
+    expected_code: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    task_file = tmp_path / "task.txt"
+    task_file.write_bytes(raw)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "task-file-test-placeholder")
+
+    exit_code = main(
+        [
+            "--workspace",
+            str(tmp_path / "workspace"),
+            "--task-file",
+            str(task_file),
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert exit_code == 2
+    assert payload["status"] == "startup_error"
+    assert expected_code not in output
+    assert "private task" not in output

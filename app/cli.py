@@ -16,6 +16,7 @@ from app.application import ApplicationStartupError, execute_task
 from app.config import AgentLimits, ConfigurationError, DeepSeekConfig, RuntimeConfig
 from app.env_loader import EnvFileError, load_project_env
 from app.runtime import AgentRunResult, AgentRunStatus
+from app.task_input import TaskFileError, load_task_file
 
 EXIT_BY_STATUS = {
     AgentRunStatus.COMPLETED: 0,
@@ -56,7 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run a natural-language task against an isolated workspace.",
     )
     parser.add_argument("--workspace", required=True, type=Path, help="Workspace root path.")
-    parser.add_argument("--task", required=True, help="Natural-language task to execute.")
+    task_input = parser.add_mutually_exclusive_group(required=True)
+    task_input.add_argument("--task", help="Natural-language task to execute.")
+    task_input.add_argument("--task-file", type=Path, help="UTF-8 task file path.")
     parser.add_argument("--trace", type=Path, help="Optional JSONL trace output path.")
     parser.add_argument("--max-turns", type=positive_int, help="Model-turn limit override.")
     parser.add_argument(
@@ -160,11 +163,11 @@ def _print_startup_error(message: str, *, json_output: bool) -> None:
         print(f"configuration/startup error: {message}", file=sys.stderr)
 
 
-async def _run(args: argparse.Namespace) -> AgentRunResult:
+async def _run(args: argparse.Namespace, task: str) -> AgentRunResult:
     deepseek, limits = _configured_values(args)
     return await execute_task(
         workspace=args.workspace,
-        task=args.task,
+        task=task,
         trace_path=args.trace,
         deepseek_config=deepseek,
         limits=limits,
@@ -175,11 +178,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         load_project_environment()
-        result = asyncio.run(_run(args))
+        task = args.task if args.task is not None else load_task_file(args.task_file)
+        result = asyncio.run(_run(args, task))
     except (
         CliConfigurationError,
         ConfigurationError,
         EnvFileError,
+        TaskFileError,
         ApplicationStartupError,
     ) as exc:
         message = exc.safe_message if isinstance(exc, ApplicationStartupError) else str(exc)

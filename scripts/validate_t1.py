@@ -123,13 +123,13 @@ def _target_entry_details(content: str) -> dict[str, dict[str, Any]]:
             if path not in line:
                 continue
             entry["actual_month"] = current_month
-            pattern = re.compile(
-                rf"^\s*[-*+]\s+`?{re.escape(path)}`?\s*"
-                r"(?:—|–|―|-|:|\|)\s*(?P<summary>\S.*)\s*$"
-            )
-            match = pattern.fullmatch(line)
-            entry["entry_line_found"] = match is not None
-            entry["has_nonempty_summary"] = bool(match and match.group("summary").strip(" `\t"))
+            _, suffix = line.split(path, maxsplit=1)
+            suffix = suffix.lstrip()
+            if suffix.startswith("`"):
+                suffix = suffix[1:].lstrip()
+            summary = re.sub(r"^[\s—–―:|,-]+", "", suffix).strip(" `\t|")
+            entry["entry_line_found"] = True
+            entry["has_nonempty_summary"] = any(character.isalnum() for character in summary)
     return details
 
 

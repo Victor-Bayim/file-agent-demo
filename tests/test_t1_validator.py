@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.run_paths import create_workspace_copy
 from scripts.validate_t1 import TARGET_PATHS, TARGETS_BY_MONTH, validate_t1
 
@@ -113,18 +115,56 @@ def test_t1_validator_rejects_month_headings_out_of_order(tmp_path: Path) -> Non
     assert report["checks"]["targets_in_correct_month"] is True
 
 
-def test_t1_validator_accepts_common_markdown_bullets(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "replacement",
+    (
+        "1. {path} — Ordered-list summary.",
+        "| `{path}` | Table summary. |",
+        "{path}: Plain-text summary.",
+    ),
+)
+def test_t1_validator_accepts_format_agnostic_single_line_entries(
+    replacement: str,
+    tmp_path: Path,
+) -> None:
     workspace = make_copy(tmp_path)
-    content = (
-        correct_index()
-        .replace("- data/", "* `data/")
-        .replace(".csv — Verified", ".csv` : Verified")
+    path = TARGETS_BY_MONTH["2025-09"][0]
+    content = correct_index().replace(
+        f"- {path} — Verified relevant source.",
+        replacement.format(path=path),
     )
     (workspace / "falcon_index.md").write_text(content, encoding="utf-8")
 
     report = validate_t1(BASELINE_PATH, workspace)
 
     assert report["valid"] is True
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    (
+        "{path}",
+        "{path}\nSummary appears on the next line.",
+        "{path} — ...",
+        "| `{path}` | --- |",
+    ),
+)
+def test_t1_validator_rejects_missing_same_line_substantive_summary(
+    replacement: str,
+    tmp_path: Path,
+) -> None:
+    workspace = make_copy(tmp_path)
+    path = TARGETS_BY_MONTH["2025-09"][0]
+    content = correct_index().replace(
+        f"- {path} — Verified relevant source.",
+        replacement.format(path=path),
+    )
+    (workspace / "falcon_index.md").write_text(content, encoding="utf-8")
+
+    report = validate_t1(BASELINE_PATH, workspace)
+
+    assert report["valid"] is False
+    assert report["checks"]["each_target_has_one_line_summary"] is False
 
 
 def test_t1_validator_rejects_delete_claim_and_unexpected_directory(tmp_path: Path) -> None:

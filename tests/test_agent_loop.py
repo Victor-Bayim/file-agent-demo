@@ -881,6 +881,7 @@ def test_complete_fake_index_flow_is_driven_only_by_tool_calls(tmp_path: Path) -
     result, trace = run(model=model, registry=registry, state=state, sink=sink)
 
     assert result.status is AgentRunStatus.COMPLETED
+    assert result.answer == "Index created and verified."
     assert (root / "index.txt").read_text(encoding="utf-8") == index_content
     assert [event.tool for event in trace.events] == [
         "list_directory",

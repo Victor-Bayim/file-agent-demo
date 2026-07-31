@@ -38,6 +38,12 @@ def test_system_prompt_contains_required_general_safety_sections() -> None:
         "Never delete files",
         "at most one mutating tool call",
         "require_exact_line",
+        "read the written file back before finishing",
+        "A successful write alone does not prove this",
+        "merely because write_file succeeded",
+        "correct the output when safely possible",
+        "manifests, indexes, and change reports only from operations that actually",
+        "accurately reflects the completed operations",
         "most recent explicit dated evidence",
         "Do not use filesystem modification time",
         "answer each one directly",
@@ -71,6 +77,8 @@ def test_system_prompt_contains_no_seed_answers_or_paths() -> None:
         "10 matching files",
         "14 matching occurrences",
         "10 files and 14 occurrences",
+        "three files",
+        "3 files",
     ):
         assert seeded_answer not in FILE_AGENT_SYSTEM_PROMPT
 
@@ -83,6 +91,22 @@ def test_system_prompt_requires_direct_structured_completion_without_content_det
     assert "Do not inspect or summarize matched content" in prompt
     assert "Do not substitute a narrative, timeline, or content summary" in prompt
     assert "unless the application or a tool explicitly" in prompt
+
+
+def test_system_prompt_requires_general_read_back_and_success_based_reports() -> None:
+    prompt = FILE_AGENT_SYSTEM_PROMPT
+
+    assert "After a successful write_file call" in prompt
+    assert "important structure and content" in prompt
+    assert "read it back and verify" in prompt
+    assert "operations that actually" in prompt
+    for task_specific_value in (
+        "api-v1-spec.md",
+        "blog-post-launch.md",
+        "onboarding-guide.md",
+        "status: obsolete",
+    ):
+        assert task_specific_value not in prompt
 
 
 def test_build_initial_messages_contains_only_system_and_user_task() -> None:

@@ -210,6 +210,24 @@ def test_search_text_schema_explains_literal_and_aggregate_semantics(workspace: 
         assert seeded_value not in query_description
 
 
+def test_write_file_description_distinguishes_commit_from_business_validation(
+    workspace: Path,
+) -> None:
+    registry, _ = make_registry(workspace)
+    description = registry.get("write_file").description
+
+    assert "successful write confirms the filesystem commit" in description
+    assert "not that the business structure or content satisfies the task" in description
+    assert "read the file afterward" in description
+    for task_specific_value in (
+        "archive/MANIFEST.md",
+        "api-v1-spec.md",
+        "Project Falcon",
+        "Project Phoenix",
+    ):
+        assert task_specific_value not in description
+
+
 def test_search_text_complete_result_summary_is_deterministic_and_aggregate(
     workspace: Path,
 ) -> None:

@@ -45,7 +45,16 @@ MUTATION SAFETY
 - After a mutation, inspect the tool result before proposing another mutation.
 - Do not infer file status from its name when the decision depends on file content.
 - When a move depends on an exact content condition, pass the condition through require_exact_line.
-- Build manifests from operations that actually succeeded, not merely planned operations.
+- After a successful write_file call, read the written file back before finishing.
+- Verify that the written file exists and that its important structure and content
+  match the user's request. A successful write alone does not prove this.
+- Do not claim that a written output is complete merely because write_file succeeded.
+- If read-back verification fails, correct the output when safely possible or
+  report the failure clearly.
+- Build manifests, indexes, and change reports only from operations that actually
+  succeeded, not merely planned operations.
+- After writing a manifest, index, or change report, read it back and verify that
+  it accurately reflects the completed operations before finishing.
 
 EVIDENCE AND DATES
 - For conflicting facts, prefer the most recent explicit dated evidence.

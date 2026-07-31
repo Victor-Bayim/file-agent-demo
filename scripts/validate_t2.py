@@ -7,7 +7,7 @@ import hashlib
 import json
 import os
 import stat
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 MOVED_SOURCES = (
@@ -42,8 +42,9 @@ def _hash_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _inventory(root: Path) -> dict[str, str]:
+def _inventory(root: Path) -> tuple[dict[str, str], set[str]]:
     files: dict[str, str] = {}
+    directories: set[str] = set()
     pending = [root]
     while pending:
         directory = pending.pop()
@@ -55,12 +56,13 @@ def _inventory(root: Path) -> dict[str, str]:
                 if _is_link(path):
                     raise ValueError("workspace contains a link or reparse point")
                 if entry.is_dir(follow_symlinks=False):
+                    directories.add(path.relative_to(root).as_posix())
                     pending.append(path)
                 elif entry.is_file(follow_symlinks=False):
                     files[path.relative_to(root).as_posix()] = _hash_file(path)
                 else:
                     raise ValueError("workspace contains an unsupported entry")
-    return dict(sorted(files.items()))
+    return dict(sorted(files.items())), directories
 
 
 def _load_baseline(path: Path) -> dict[str, Any]:
@@ -71,15 +73,30 @@ def _load_baseline(path: Path) -> dict[str, Any]:
     return value
 
 
+def _expected_directories(paths: set[str]) -> set[str]:
+    directories: set[str] = set()
+    for value in paths:
+        parent = PurePosixPath(value).parent
+        while parent != PurePosixPath("."):
+            directories.add(parent.as_posix())
+            parent = parent.parent
+    return directories
+
+
 def validate_t2(baseline_path: Path, workspace: Path) -> dict[str, Any]:
     baseline = _load_baseline(baseline_path)
     baseline_hashes = {item["path"]: item["sha256"] for item in baseline["files"]}
-    actual = _inventory(workspace)
+    actual, actual_directories = _inventory(workspace)
     moved_destinations = {source: f"archive/{Path(source).name}" for source in MOVED_SOURCES}
     expected_hashes = {
         (moved_destinations.get(path) or path): sha256 for path, sha256 in baseline_hashes.items()
     }
     expected_paths = set(expected_hashes) | {MANIFEST_PATH}
+    expected_directories = _expected_directories(expected_paths)
+    expected_archive_paths = {
+        MANIFEST_PATH,
+        *moved_destinations.values(),
+    }
     manifest = workspace / MANIFEST_PATH
     manifest_lines = (
         manifest.read_text(encoding="utf-8").rstrip("\r\n").splitlines()
@@ -107,8 +124,11 @@ def validate_t2(baseline_path: Path, workspace: Path) -> dict[str, Any]:
         "manifest_exists": manifest.is_file(),
         "manifest_exact": manifest_lines == list(MANIFEST_LINES),
         "manifest_sorted": manifest_lines == sorted(manifest_lines),
+        "archive_contents_exact": {path for path in actual if path.startswith("archive/")}
+        == expected_archive_paths,
         "unchanged_files_match": all(unchanged_paths.values()),
         "no_other_paths": set(actual) == expected_paths,
+        "no_other_directories": actual_directories == expected_directories,
     }
     errors = [name for name, passed in checks.items() if not passed]
     return {
@@ -122,6 +142,7 @@ def validate_t2(baseline_path: Path, workspace: Path) -> dict[str, Any]:
         ],
         "unexpected_paths": sorted(set(actual) - expected_paths),
         "missing_paths": sorted(expected_paths - set(actual)),
+        "unexpected_directories": sorted(actual_directories - expected_directories),
     }
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from app.run_paths import create_workspace_copy
@@ -21,12 +22,29 @@ def completed_copy(tmp_path: Path) -> Path:
     return workspace
 
 
+def workspace_snapshot(workspace: Path) -> tuple[dict[str, str], set[str]]:
+    files = {
+        path.relative_to(workspace).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in workspace.rglob("*")
+        if path.is_file()
+    }
+    directories = {
+        path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_dir()
+    }
+    return files, directories
+
+
 def test_t2_validator_accepts_exact_moves_and_manifest(tmp_path: Path) -> None:
-    report = validate_t2(BASELINE_PATH, completed_copy(tmp_path))
+    workspace = completed_copy(tmp_path)
+    before = workspace_snapshot(workspace)
+
+    report = validate_t2(BASELINE_PATH, workspace)
 
     assert report["valid"] is True
     assert all(report["checks"].values())
     assert report["manifest_lines"] == list(MANIFEST_LINES)
+    assert all(line.startswith("- ") for line in report["manifest_lines"])
+    assert workspace_snapshot(workspace) == before
 
 
 def test_t2_validator_rejects_wrong_manifest_order_or_content(tmp_path: Path) -> None:
@@ -41,6 +59,20 @@ def test_t2_validator_rejects_wrong_manifest_order_or_content(tmp_path: Path) ->
     assert report["valid"] is False
     assert report["checks"]["manifest_exact"] is False
     assert report["checks"]["manifest_sorted"] is False
+
+
+def test_t2_validator_rejects_manifest_path_prefix_or_extra_explanation(tmp_path: Path) -> None:
+    workspace = completed_copy(tmp_path)
+    manifest = workspace / "archive" / "MANIFEST.md"
+    manifest.write_text(
+        "- archive/api-v1-spec.md\n- blog-post-launch.md — moved\n- onboarding-guide.md\n",
+        encoding="utf-8",
+    )
+
+    report = validate_t2(BASELINE_PATH, workspace)
+
+    assert report["valid"] is False
+    assert report["checks"]["manifest_exact"] is False
 
 
 def test_t2_validator_rejects_missing_move(tmp_path: Path) -> None:
@@ -77,6 +109,22 @@ def test_t2_validator_rejects_active_move_and_extra_file(tmp_path: Path) -> None
     assert report["checks"]["active_drafts_remain"] is False
     assert report["checks"]["misleading_name_remains"] is False
     assert report["checks"]["no_other_paths"] is False
+
+
+def test_t2_validator_rejects_unexpected_archive_file_and_empty_directory(
+    tmp_path: Path,
+) -> None:
+    workspace = completed_copy(tmp_path)
+    (workspace / "archive" / "extra.txt").write_text("extra", encoding="utf-8")
+    (workspace / "archive" / "unexpected-empty").mkdir()
+
+    report = validate_t2(BASELINE_PATH, workspace)
+
+    assert report["valid"] is False
+    assert report["checks"]["archive_contents_exact"] is False
+    assert report["checks"]["no_other_paths"] is False
+    assert report["checks"]["no_other_directories"] is False
+    assert report["unexpected_directories"] == ["archive/unexpected-empty"]
 
 
 def test_t2_validator_ignores_manifest_trailing_newline_only(tmp_path: Path) -> None:

@@ -895,9 +895,14 @@ def build_filesystem_registry(
                 name="write_file",
                 description=(
                     "Create one new UTF-8 file, or safely replace an existing file only after it "
-                    "was read and overwrite is explicitly enabled. A successful write confirms "
-                    "the filesystem commit, not that the business structure or content satisfies "
-                    "the task; read the file afterward when those facts require validation."
+                    "was read and overwrite is explicitly enabled. The content argument is the "
+                    "complete file content: the tool adds no headings, blank lines, Markdown, or "
+                    "explanations. For an exact format, content must contain only what the user "
+                    "requested. A successful write confirms the filesystem commit, not that the "
+                    "business structure or content satisfies the task; read the file afterward "
+                    "to validate it. Before correcting an existing file, read it to establish the "
+                    "current observation; call write_file with overwrite=true, then read it again "
+                    "to verify the correction."
                 ),
                 args_model=WriteFileArgs,
                 is_mutating=True,

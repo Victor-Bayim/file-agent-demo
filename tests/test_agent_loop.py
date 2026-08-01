@@ -846,6 +846,73 @@ def test_trace_arguments_are_sanitized_inside_agent_loop(tmp_path: Path) -> None
     assert trace.events[0].args["nested"]["Authorization"] == "[REDACTED]"
 
 
+def test_generic_exact_format_flow_corrects_and_rechecks_written_file(tmp_path: Path) -> None:
+    root = tmp_path / "workspace"
+    root.mkdir()
+    registry, state = filesystem_runtime(root)
+    initial_content = "# Items\n\nitem=red\nitem=blue\n"
+    exact_content = "item=red\nitem=blue\n"
+    model = FakeModelClient(
+        [
+            response(
+                calls=[
+                    call(
+                        "write_file",
+                        {"path": "formatted.txt", "content": initial_content},
+                        "write-initial",
+                    )
+                ]
+            ),
+            response(calls=[call("read_file", {"path": "formatted.txt"}, "read-initial")]),
+            response(
+                calls=[
+                    call(
+                        "write_file",
+                        {
+                            "path": "formatted.txt",
+                            "content": exact_content,
+                            "overwrite": True,
+                        },
+                        "write-corrected",
+                    )
+                ]
+            ),
+            response(calls=[call("read_file", {"path": "formatted.txt"}, "read-corrected")]),
+            response(content="The exact two-line file was verified."),
+        ]
+    )
+
+    result, trace = run(model=model, registry=registry, state=state)
+
+    assert result.status is AgentRunStatus.COMPLETED
+    assert result.answer == "The exact two-line file was verified."
+    assert (root / "formatted.txt").read_text(encoding="utf-8") == exact_content
+    assert [event.tool for event in trace.events] == [
+        "write_file",
+        "read_file",
+        "write_file",
+        "read_file",
+    ]
+    assert [mutation.operation for mutation in result.mutations] == [
+        "write_file",
+        "write_file",
+    ]
+    assert [mutation.changed for mutation in result.mutations] == [True, True]
+    assert trace.events[0].ok is True
+    assert trace.events[2].ok is True
+    assert trace.events[2].args["overwrite"] is True
+
+    first_read = next(
+        message for message in model.calls[2].messages if message.tool_call_id == "read-initial"
+    )
+    corrected_read = next(
+        message for message in model.calls[4].messages if message.tool_call_id == "read-corrected"
+    )
+    assert tool_payload(first_read)["data"]["content"] == initial_content
+    assert tool_payload(corrected_read)["data"]["content"] == exact_content
+    assert state.get_observation("formatted.txt") is not None
+
+
 def test_complete_fake_index_flow_is_driven_only_by_tool_calls(tmp_path: Path) -> None:
     root = tmp_path / "workspace"
     (root / "documents").mkdir(parents=True)

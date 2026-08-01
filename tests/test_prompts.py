@@ -109,6 +109,39 @@ def test_system_prompt_requires_general_read_back_and_success_based_reports() ->
         assert task_specific_value not in prompt
 
 
+def test_system_prompt_enforces_exact_formats_after_full_read_back() -> None:
+    prompt = FILE_AGENT_SYSTEM_PROMPT
+
+    for rule in (
+        "exact output format, template, line format, number of",
+        "every detail as a",
+        "Do not add headings, introductory text, blank lines",
+        "every line in the file must",
+        "compare the entire file against every explicit",
+        "expected information is present",
+        "extra or missing content, incorrect ordering or prefixes",
+        "correct the file before",
+        "observation created by read_file",
+        "write_file with overwrite=true",
+        "read the file back again",
+        "corrected version has been verified",
+    ):
+        assert rule in prompt
+
+    for task_specific_value in (
+        "archive/MANIFEST.md",
+        "api-v1-spec.md",
+        "blog-post-launch.md",
+        "onboarding-guide.md",
+        "status: obsolete",
+        "drafts/",
+        "archive/",
+        "T1",
+        "T2",
+    ):
+        assert task_specific_value not in prompt
+
+
 def test_build_initial_messages_contains_only_system_and_user_task() -> None:
     task = "Organize the requested files safely."
 

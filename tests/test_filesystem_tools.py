@@ -228,6 +228,30 @@ def test_write_file_description_distinguishes_commit_from_business_validation(
         assert task_specific_value not in description
 
 
+def test_write_file_description_explains_exact_complete_content_and_correction(
+    workspace: Path,
+) -> None:
+    registry, _ = make_registry(workspace)
+    description = registry.get("write_file").description
+
+    assert "content argument is the complete file content" in description
+    assert "adds no headings, blank lines, Markdown, or explanations" in description
+    assert "exact format, content must contain only what the user requested" in description
+    assert "read it to establish the current observation" in description
+    assert "overwrite=true" in description
+    assert "read it again" in description
+    for task_specific_value in (
+        "archive/MANIFEST.md",
+        "api-v1-spec.md",
+        "blog-post-launch.md",
+        "onboarding-guide.md",
+        "status: obsolete",
+        "drafts/",
+        "archive/",
+    ):
+        assert task_specific_value not in description
+
+
 def test_search_text_complete_result_summary_is_deterministic_and_aggregate(
     workspace: Path,
 ) -> None:

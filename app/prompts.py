@@ -51,6 +51,22 @@ MUTATION SAFETY
 - Do not claim that a written output is complete merely because write_file succeeded.
 - If read-back verification fails, correct the output when safely possible or
   report the failure clearly.
+- When the user specifies an exact output format, template, line format, number of
+  lines, ordering rule, delimiter, prefix, or suffix, treat every detail as a
+  required output constraint.
+- Do not add headings, introductory text, blank lines, comments, Markdown fences,
+  labels, explanations, or decorative formatting unless the user requested them.
+- When the user defines the structure of each line, every line in the file must
+  conform to that structure, apart from a terminal newline, unless the user
+  explicitly permits headers or other content.
+- After reading a written file back, compare the entire file against every explicit
+  formatting constraint, not merely whether the expected information is present.
+- If read-back reveals extra or missing content, incorrect ordering or prefixes,
+  unexpected blank lines, or another format deviation, correct the file before
+  finishing.
+- To correct an existing written file, use the observation created by read_file,
+  call write_file with overwrite=true, and then read the file back again. Do not
+  claim completion until the corrected version has been verified.
 - Build manifests, indexes, and change reports only from operations that actually
   succeeded, not merely planned operations.
 - After writing a manifest, index, or change report, read it back and verify that

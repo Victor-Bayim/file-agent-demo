@@ -37,7 +37,7 @@ def test_render_blueprint_service_shape() -> None:
     assert service["region"] == "singapore"
     assert service["healthCheckPath"] == "/healthz"
     assert service["autoDeployTrigger"] == "commit"
-    assert service["maxShutdownDelaySeconds"] == 30
+    assert "maxShutdownDelaySeconds" not in service
     assert "disk" not in service
     assert "numInstances" not in service
     assert "dockerCommand" not in service

@@ -6,7 +6,6 @@ services:
     region: singapore
     healthCheckPath: /healthz
     autoDeployTrigger: commit
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: DEEPSEEK_API_KEY
         sync: false

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File Agent</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section id="login-view" class="login-card">
+        <p class="eyebrow">LOCAL WORKSPACE RUNTIME</p>
+        <h1>File Agent</h1>
+        <p class="muted">Enter the local demo passphrase to create an isolated workspace.</p>
+        <form id="login-form">
+          <label for="access-code">Demo passphrase</label>
+          <input id="access-code" name="access_code" type="password" autocomplete="current-password" required>
+          <button type="submit">Open session</button>
+        </form>
+        <p id="login-error" class="error" role="alert"></p>
+      </section>
+
+      <section id="app-view" class="app-view" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">ISOLATED SESSION</p>
+            <h1>File Agent</h1>
+          </div>
+          <div class="topbar-actions">
+            <span id="connection-status" class="status-pill">Connected</span>
+            <button id="reset-button" class="secondary" type="button">Reset workspace</button>
+            <button id="logout-button" class="ghost" type="button">Log out</button>
+          </div>
+        </header>
+
+        <div class="workspace-grid">
+          <aside class="panel tree-panel">
+            <div class="panel-heading">
+              <h2>Workspace</h2>
+              <button id="refresh-tree" class="icon-button" type="button" aria-label="Refresh files">↻</button>
+            </div>
+            <p id="tree-status" class="muted compact"></p>
+            <div id="file-tree" class="file-tree"></div>
+          </aside>
+
+          <section class="panel task-panel">
+            <div class="panel-heading">
+              <h2>Task</h2>
+              <span id="agent-status" class="status-pill idle">Idle</span>
+            </div>
+            <label for="task-input" class="sr-only">Natural-language task</label>
+            <textarea id="task-input" rows="7" placeholder="Describe a file task…"></textarea>
+            <div class="task-actions">
+              <button id="run-button" type="button">Run agent</button>
+              <button id="cancel-button" class="danger" type="button" disabled>Cancel</button>
+            </div>
+            <p id="task-error" class="error" role="alert"></p>
+
+            <div class="answer-card">
+              <h3>Final answer</h3>
+              <pre id="final-answer">No run yet.</pre>
+            </div>
+
+            <div class="stats-grid" aria-label="Run statistics">
+              <div><span>Model calls</span><strong id="stat-model-calls">0</strong></div>
+              <div><span>Tool calls</span><strong id="stat-tool-calls">0</strong></div>
+              <div><span>Input tokens</span><strong id="stat-input-tokens">0</strong></div>
+              <div><span>Output tokens</span><strong id="stat-output-tokens">0</strong></div>
+              <div><span>Total tokens</span><strong id="stat-total-tokens">0</strong></div>
+              <div><span>Elapsed</span><strong id="stat-elapsed">0 ms</strong></div>
+              <div><span>Changed</span><strong id="stat-changed">0</strong></div>
+              <div><span>Failed</span><strong id="stat-failed">0</strong></div>
+            </div>
+          </section>
+
+          <aside class="panel trace-panel">
+            <div class="panel-heading">
+              <h2>Live steps</h2>
+              <span id="event-count" class="muted compact">0 events</span>
+            </div>
+            <ol id="trace-list" class="trace-list"></ol>
+          </aside>
+        </div>
+
+        <section class="panel viewer-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>File viewer</h2>
+              <p id="viewer-path" class="muted compact">Select a file.</p>
+            </div>
+            <button id="next-page" class="secondary" type="button" disabled>Next page</button>
+          </div>
+          <pre id="file-content">File content is loaded in bounded pages.</pre>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

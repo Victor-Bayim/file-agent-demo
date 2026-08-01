@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import app.application as application_module
 from app.application import ApplicationStartupError, execute_task
 from app.config import DeepSeekConfig
 from app.model_types import (
@@ -189,6 +190,42 @@ def test_execute_task_does_not_close_injected_model_client(tmp_path: Path) -> No
     asyncio.run(execute_task(workspace=workspace, task="Task", model_client=model))
 
     assert model.closed is False  # type: ignore[attr-defined]
+
+
+def test_execute_task_closes_internally_created_deepseek_client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    created = []
+
+    class ClosingClient:
+        def __init__(self, config: DeepSeekConfig) -> None:
+            del config
+            self.closed = False
+            created.append(self)
+
+        async def complete(self, messages, tools):  # type: ignore[no-untyped-def]
+            del messages, tools
+            return response("Done.")
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    monkeypatch.setattr(application_module, "DeepSeekClient", ClosingClient)
+
+    result = asyncio.run(
+        execute_task(
+            workspace=workspace,
+            task="Task",
+            deepseek_config=DeepSeekConfig(api_key="fake-test-key"),
+        )
+    )
+
+    assert result.status is AgentRunStatus.COMPLETED
+    assert len(created) == 1
+    assert created[0].closed is True
 
 
 def test_api_key_is_absent_from_trace_and_serialized_result(tmp_path: Path) -> None:

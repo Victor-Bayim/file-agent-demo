@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
@@ -281,6 +282,19 @@ class DeepSeekClient(ModelClient):
                 max_retries=config.max_retries,
             )
         self._client = client
+        self._closed = False
+
+    async def aclose(self) -> None:
+        """Close the owned transport when the composition root releases this client."""
+        if self._closed:
+            return
+        self._closed = True
+        close = getattr(self._client, "aclose", None) or getattr(self._client, "close", None)
+        if close is None:
+            return
+        result = close()
+        if inspect.isawaitable(result):
+            await result
 
     async def complete(
         self,

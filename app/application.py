@@ -58,6 +58,7 @@ async def execute_task(
     except ValueError as exc:
         raise ApplicationStartupError("TASK_INVALID", str(exc)) from None
 
+    owns_model_client = model_client is None
     if model_client is None:
         try:
             selected_config = deepseek_config or DeepSeekConfig.from_environment()
@@ -70,29 +71,34 @@ async def execute_task(
                 "DEEPSEEK_API_KEY is required to construct the model client.",
             ) from None
 
-    if trace_path is None:
-        try:
-            runs_dir = RuntimeConfig.from_environment().runs_dir
-        except ConfigurationError as exc:
-            raise ApplicationStartupError("RUNTIME_CONFIGURATION", str(exc)) from None
-        trace_path = default_trace_path(runs_dir, run_id)
     try:
-        with JsonlTraceWriter(trace_path, workspace_root=sandbox.root) as trace_writer:
-            result = await run_agent(
-                model=model_client,
-                registry=registry,
-                state=state,
-                messages=messages,
-                trace_writer=trace_writer,
-                limits=selected_limits,
-                event_sink=event_sink,
-                cancel_event=cancel_event,
-            )
-            resolved_trace_path = trace_writer.output_path
-    except TraceError as exc:
-        raise ApplicationStartupError("TRACE_INVALID", str(exc)) from None
-    except OSError:
-        raise ApplicationStartupError(
-            "TRACE_INITIALIZATION", "Trace initialization failed."
-        ) from None
+        if trace_path is None:
+            try:
+                runs_dir = RuntimeConfig.from_environment().runs_dir
+            except ConfigurationError as exc:
+                raise ApplicationStartupError("RUNTIME_CONFIGURATION", str(exc)) from None
+            trace_path = default_trace_path(runs_dir, run_id)
+        try:
+            with JsonlTraceWriter(trace_path, workspace_root=sandbox.root) as trace_writer:
+                result = await run_agent(
+                    model=model_client,
+                    registry=registry,
+                    state=state,
+                    messages=messages,
+                    trace_writer=trace_writer,
+                    limits=selected_limits,
+                    event_sink=event_sink,
+                    cancel_event=cancel_event,
+                )
+                resolved_trace_path = trace_writer.output_path
+        except TraceError as exc:
+            raise ApplicationStartupError("TRACE_INVALID", str(exc)) from None
+        except OSError:
+            raise ApplicationStartupError(
+                "TRACE_INITIALIZATION", "Trace initialization failed."
+            ) from None
+    finally:
+        if owns_model_client:
+            assert isinstance(model_client, DeepSeekClient)
+            await model_client.aclose()
     return result.model_copy(update={"trace_path": resolved_trace_path})

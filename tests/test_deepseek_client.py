@@ -258,6 +258,17 @@ def test_default_sdk_client_requires_key_but_injected_client_does_not() -> None:
     assert DeepSeekClient(DeepSeekConfig(), fake_sdk())
 
 
+def test_client_aclose_delegates_once_to_transport() -> None:
+    transport = fake_sdk()
+    transport.aclose = AsyncMock()
+    client = DeepSeekClient(DeepSeekConfig(), transport)
+
+    asyncio.run(client.aclose())
+    asyncio.run(client.aclose())
+
+    transport.aclose.assert_awaited_once_with()
+
+
 def test_response_normalizes_text_usage_and_public_metadata() -> None:
     response = sdk_response(
         content="answer",

@@ -219,9 +219,11 @@ class SessionManager:
                 continue
             try:
                 self.remove_session(session_id)
-            except SessionError as exc:
-                LOGGER.warning("session_shutdown_cleanup_failed category=%s", exc.code)
+            except (OSError, SessionError) as exc:
+                category = exc.code if isinstance(exc, SessionError) else "OS_ERROR"
+                LOGGER.warning("session_shutdown_cleanup_failed category=%s", category)
                 continue
+        self._sessions.clear()
 
     def _ensure_capacity(self) -> None:
         while len(self._sessions) >= self.settings.max_sessions:

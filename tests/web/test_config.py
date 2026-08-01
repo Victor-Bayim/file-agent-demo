@@ -58,7 +58,13 @@ def test_storage_roots_cannot_overlap(seed_workspace: Path, tmp_path: Path) -> N
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("port", 0), ("max_sessions", 0), ("max_task_chars", 0), ("web_max_tool_calls", 0)],
+    [
+        ("port", 0),
+        ("max_sessions", 0),
+        ("max_task_chars", 0),
+        ("web_max_tool_calls", 0),
+        ("shutdown_grace_seconds", 0),
+    ],
 )
 def test_positive_numeric_limits(
     seed_workspace: Path,
@@ -75,6 +81,63 @@ def test_positive_numeric_limits(
     }
     with pytest.raises(ValidationError):
         WebSettings(**payload)
+
+
+def _environment(seed_workspace: Path, tmp_path: Path) -> dict[str, str]:
+    return {
+        "FILE_AGENT_WEB_SEED_WORKSPACE": str(seed_workspace),
+        "FILE_AGENT_WEB_SESSION_ROOT": str(tmp_path / "sessions"),
+        "FILE_AGENT_WEB_RUNS_ROOT": str(tmp_path / "runs"),
+        "FILE_AGENT_WEB_ACCESS_CODE": "offline-placeholder",
+    }
+
+
+def test_explicit_web_port_precedes_platform_port(
+    seed_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    environ = _environment(seed_workspace, tmp_path)
+    environ.update({"FILE_AGENT_WEB_PORT": "8123", "PORT": "9123"})
+
+    assert WebSettings.from_environment(environ).port == 8123
+
+
+def test_platform_port_fallback_and_local_default(
+    seed_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    environ = _environment(seed_workspace, tmp_path)
+    assert WebSettings.from_environment({**environ, "PORT": "9123"}).port == 9123
+    assert WebSettings.from_environment(environ).port == 8000
+
+
+def test_invalid_platform_port_is_safely_redacted(
+    seed_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    invalid = "invalid-port-placeholder"
+    environ = {**_environment(seed_workspace, tmp_path), "PORT": invalid}
+
+    with pytest.raises(WebConfigurationError) as captured:
+        WebSettings.from_environment(environ)
+
+    assert "port" in str(captured.value)
+    assert invalid not in str(captured.value)
+
+
+def test_public_mode_requires_secure_cookie(
+    seed_workspace: Path,
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValidationError, match="cookie_secure must be enabled"):
+        WebSettings(
+            seed_workspace=seed_workspace,
+            session_root=tmp_path / "sessions",
+            web_runs_root=tmp_path / "runs",
+            access_code="offline-placeholder",
+            public_mode=True,
+            cookie_secure=False,
+        )
 
 
 def test_import_has_no_environment_or_filesystem_side_effect(

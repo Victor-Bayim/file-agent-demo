@@ -1,0 +1,64 @@
+services:
+  - type: web
+    name: file-agent-demo
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: FILE_AGENT_WEB_ACCESS_CODE
+        sync: false
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: DEEPSEEK_MODEL
+        value: deepseek-v4-flash
+      - key: DEEPSEEK_THINKING
+        value: disabled
+      - key: DEEPSEEK_TEMPERATURE
+        value: "0.1"
+      - key: DEEPSEEK_MAX_OUTPUT_TOKENS
+        value: "4096"
+      - key: DEEPSEEK_TIMEOUT_SECONDS
+        value: "45"
+      - key: DEEPSEEK_MAX_RETRIES
+        value: "1"
+      - key: FILE_AGENT_WEB_PUBLIC_MODE
+        value: "true"
+      - key: FILE_AGENT_WEB_SEED_WORKSPACE
+        value: workspace
+      - key: FILE_AGENT_WEB_SESSION_ROOT
+        value: /tmp/file-agent/sessions
+      - key: FILE_AGENT_WEB_RUNS_ROOT
+        value: /tmp/file-agent/runs
+      - key: FILE_AGENT_WEB_HOST
+        value: 0.0.0.0
+      - key: FILE_AGENT_WEB_COOKIE_SECURE
+        value: "true"
+      - key: FILE_AGENT_WEB_SESSION_TTL_SECONDS
+        value: "3600"
+      - key: FILE_AGENT_WEB_MAX_SESSIONS
+        value: "20"
+      - key: FILE_AGENT_WEB_MAX_TASK_CHARS
+        value: "10000"
+      - key: FILE_AGENT_WEB_MAX_CONCURRENT_RUNS
+        value: "1"
+      - key: FILE_AGENT_WEB_MAX_RUNS_PER_SESSION_HOUR
+        value: "3"
+      - key: FILE_AGENT_WEB_MAX_RUNS_PER_IP_HOUR
+        value: "10"
+      - key: FILE_AGENT_WEB_MAX_MODEL_TURNS
+        value: "24"
+      - key: FILE_AGENT_WEB_MAX_TOOL_CALLS
+        value: "60"
+      - key: FILE_AGENT_WEB_MAX_RUNTIME_SECONDS
+        value: "240"
+      - key: FILE_AGENT_WEB_MAX_TOTAL_TOKENS
+        value: "60000"
+      - key: FILE_AGENT_WEB_SHUTDOWN_GRACE_SECONDS
+        value: "25"
+      - key: PYTHONUNBUFFERED
+        value: "1"

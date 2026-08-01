@@ -172,7 +172,14 @@ def create_web_app(
             await run_manager.shutdown()
             session_manager.shutdown()
 
-    app = FastAPI(title="File Agent Web Demo", debug=False, lifespan=lifespan)
+    app = FastAPI(
+        title="File Agent Web Demo",
+        debug=False,
+        lifespan=lifespan,
+        docs_url=None if settings.public_mode else "/docs",
+        redoc_url=None if settings.public_mode else "/redoc",
+        openapi_url=None if settings.public_mode else "/openapi.json",
+    )
     app.state.web_settings = settings
     app.state.session_manager = session_manager
     app.state.run_manager = run_manager
@@ -183,12 +190,17 @@ def create_web_app(
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self'; "
             "connect-src 'self'; img-src 'self' data:; object-src 'none'; "
             "base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
         )
         return response
+
+    @app.get("/healthz", include_in_schema=False)
+    async def healthz() -> dict[str, str]:
+        return {"status": "ok"}
 
     @app.exception_handler(WebAPIError)
     async def handle_web_error(request: Request, exc: WebAPIError) -> JSONResponse:

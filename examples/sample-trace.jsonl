@@ -1,0 +1,4 @@
+{"run_id":"sample-run","step":1,"timestamp":"2026-01-01T00:00:00Z","tool":"list_directory","args":{"path":"."},"ok":true,"result_summary":"Listed 1 entries; truncated=false","duration_ms":0}
+{"run_id":"sample-run","step":2,"timestamp":"2026-01-01T00:00:00Z","tool":"read_file","args":{"path":"notes/input.txt"},"ok":true,"result_summary":"Read lines 1-2 of 2","duration_ms":0}
+{"run_id":"sample-run","step":3,"timestamp":"2026-01-01T00:00:00Z","tool":"write_file","args":{"content":{"characters":34,"utf8_bytes":34,"sha256":"57d2c1d4db61d1dfba5de08dbde0e388156ca3ba51f8fc4bb8f7c61451e528d8"},"path":"summary.txt"},"ok":true,"result_summary":"Wrote 34 bytes to summary.txt","duration_ms":0}
+{"run_id":"sample-run","step":4,"timestamp":"2026-01-01T00:00:00Z","tool":"read_file","args":{"path":"summary.txt"},"ok":true,"result_summary":"Read lines 1-1 of 1","duration_ms":0}

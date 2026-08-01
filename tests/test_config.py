@@ -234,6 +234,7 @@ def test_env_example_contains_only_documented_placeholders_and_defaults() -> Non
         "FILE_AGENT_WEB_RUNS_ROOT",
         "FILE_AGENT_WEB_HOST",
         "FILE_AGENT_WEB_PORT",
+        "FILE_AGENT_WEB_PUBLIC_MODE",
         "FILE_AGENT_WEB_COOKIE_SECURE",
         "FILE_AGENT_WEB_SESSION_TTL_SECONDS",
         "FILE_AGENT_WEB_MAX_SESSIONS",
@@ -245,6 +246,7 @@ def test_env_example_contains_only_documented_placeholders_and_defaults() -> Non
         "FILE_AGENT_WEB_MAX_TOOL_CALLS",
         "FILE_AGENT_WEB_MAX_RUNTIME_SECONDS",
         "FILE_AGENT_WEB_MAX_TOTAL_TOKENS",
+        "FILE_AGENT_WEB_SHUTDOWN_GRACE_SECONDS",
     }
 
 

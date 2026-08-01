@@ -8,7 +8,13 @@ import pytest
 from app.model_types import ModelClient, ModelMessage, ModelResponse
 from app.runtime import AgentRunStatus
 from app.web.config import WebSettings
-from app.web.runs import ActiveRunError, GlobalConcurrencyError, RunManager, RunRateLimitError
+from app.web.runs import (
+    ActiveRunError,
+    GlobalConcurrencyError,
+    RunManager,
+    RunRateLimitError,
+    RunShuttingDownError,
+)
 from app.web.sessions import SessionManager
 from tests.fake_model import FakeModelClient
 from tests.web.conftest import model_response, tool_call
@@ -17,6 +23,7 @@ from tests.web.conftest import model_response, tool_call
 class BlockingModel(ModelClient):
     def __init__(self, release: asyncio.Event) -> None:
         self.release = release
+        self.started = asyncio.Event()
 
     async def complete(
         self,
@@ -24,6 +31,7 @@ class BlockingModel(ModelClient):
         tools: list[dict[str, object]],
     ) -> ModelResponse:
         del messages, tools
+        self.started.set()
         await self.release.wait()
         return model_response("Released.")
 
@@ -161,6 +169,35 @@ def test_mutation_affects_only_current_session(
         assert not (second.workspace_path / "generated.txt").exists()
         assert not (seed_workspace / "generated.txt").exists()
         assert record.public_result()["changed_mutations"] == 1
+        sessions.shutdown()
+
+    asyncio.run(exercise())
+
+
+def test_shutdown_stops_admission_and_does_not_abandon_background_task(
+    web_settings: WebSettings,
+) -> None:
+    async def exercise() -> None:
+        release = asyncio.Event()
+        settings = web_settings.model_copy(update={"shutdown_grace_seconds": 0.01})
+        sessions = SessionManager(settings)
+        sessions.start()
+        session = sessions.create_session(client_ip="one")
+        model = BlockingModel(release)
+        manager = RunManager(settings, lambda: model)
+        record = manager.start(session, task="Wait for shutdown.", client_ip="one")
+        assert record.background_task is not None
+        await asyncio.wait_for(model.started.wait(), timeout=1)
+
+        await manager.shutdown()
+
+        assert record.background_task.done()
+        assert record.status == "cancelled"
+        assert record.reason_code == "SERVER_SHUTDOWN"
+        assert record.cancel_event.is_set()
+        assert session.active_run_id is None
+        with pytest.raises(RunShuttingDownError):
+            manager.start(session, task="Too late.", client_ip="one")
         sessions.shutdown()
 
     asyncio.run(exercise())

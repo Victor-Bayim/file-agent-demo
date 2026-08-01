@@ -48,6 +48,7 @@ class WebSettings(BaseModel):
     access_code: SecretStr
     host: str = "127.0.0.1"
     port: int = Field(default=8000, gt=0, le=65535)
+    public_mode: bool = False
     cookie_secure: bool = False
     session_ttl_seconds: int = Field(default=7200, gt=0, le=604_800)
     max_sessions: int = Field(default=100, gt=0, le=10_000)
@@ -59,6 +60,7 @@ class WebSettings(BaseModel):
     web_max_tool_calls: int = Field(default=60, gt=0, le=500)
     web_max_runtime_seconds: int = Field(default=240, gt=0, le=3600)
     web_max_total_tokens: int = Field(default=80_000, gt=0, le=1_000_000)
+    shutdown_grace_seconds: float = Field(default=25.0, gt=0, le=300)
     event_backlog_limit: int = Field(default=256, ge=100, le=2000)
     sse_keepalive_seconds: float = Field(default=15.0, gt=0, le=60)
 
@@ -79,6 +81,9 @@ class WebSettings(BaseModel):
 
     @model_validator(mode="after")
     def validate_paths(self) -> Self:
+        if self.public_mode and not self.cookie_secure:
+            raise ValueError("cookie_secure must be enabled in public_mode")
+
         seed = self.seed_workspace.absolute()
         if not seed.exists() or not seed.is_dir():
             raise ValueError("seed_workspace must be an existing directory")
@@ -121,6 +126,7 @@ class WebSettings(BaseModel):
             "FILE_AGENT_WEB_ACCESS_CODE": "access_code",
             "FILE_AGENT_WEB_HOST": "host",
             "FILE_AGENT_WEB_PORT": "port",
+            "FILE_AGENT_WEB_PUBLIC_MODE": "public_mode",
             "FILE_AGENT_WEB_COOKIE_SECURE": "cookie_secure",
             "FILE_AGENT_WEB_SESSION_TTL_SECONDS": "session_ttl_seconds",
             "FILE_AGENT_WEB_MAX_SESSIONS": "max_sessions",
@@ -132,12 +138,15 @@ class WebSettings(BaseModel):
             "FILE_AGENT_WEB_MAX_TOOL_CALLS": "web_max_tool_calls",
             "FILE_AGENT_WEB_MAX_RUNTIME_SECONDS": "web_max_runtime_seconds",
             "FILE_AGENT_WEB_MAX_TOTAL_TOKENS": "web_max_total_tokens",
+            "FILE_AGENT_WEB_SHUTDOWN_GRACE_SECONDS": "shutdown_grace_seconds",
         }
         payload = {
             field_name: source[environment_name]
             for environment_name, field_name in variables.items()
             if environment_name in source
         }
+        if "FILE_AGENT_WEB_PORT" not in source and "PORT" in source:
+            payload["port"] = source["PORT"]
         try:
             return cls.model_validate(payload)
         except ValidationError as exc:

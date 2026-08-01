@@ -8,6 +8,9 @@ the process environment.
 from __future__ import annotations
 
 import sys
+from collections import deque
+from collections.abc import Sequence
+from typing import Any
 
 import uvicorn
 
@@ -21,16 +24,32 @@ from app.model_types import (
 )
 from app.web.app import create_web_app
 from app.web.config import WebConfigurationError, WebSettings
-from tests.fake_model import FakeModelClient
 
 
-def _model_factory() -> FakeModelClient:
+class OfflineFakeModelClient:
+    """Return a fixed provider-free response sequence for manual development."""
+
+    def __init__(self, responses: Sequence[ModelResponse]) -> None:
+        self._responses = deque(response.model_copy(deep=True) for response in responses)
+
+    async def complete(
+        self,
+        messages: Sequence[ModelMessage],
+        tools: Sequence[dict[str, Any]],
+    ) -> ModelResponse:
+        del messages, tools
+        if not self._responses:
+            raise RuntimeError("Offline fake responses are exhausted.")
+        return self._responses.popleft().model_copy(deep=True)
+
+
+def _model_factory() -> OfflineFakeModelClient:
     list_call = ModelToolCall.from_arguments(
         id="offline-list",
         name="list_directory",
         arguments={"path": ".", "recursive": False},
     )
-    return FakeModelClient(
+    return OfflineFakeModelClient(
         [
             ModelResponse(
                 message=ModelMessage(

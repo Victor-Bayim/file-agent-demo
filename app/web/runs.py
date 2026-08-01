@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 import secrets
 import time
 from collections.abc import Callable
@@ -20,6 +21,8 @@ from app.web.config import WebSettings
 from app.web.events import EventBacklog, WebEventSink
 from app.web.rate_limit import RateLimitDecision, SlidingWindowRateLimiter
 from app.web.sessions import SessionRecord
+
+LOGGER = logging.getLogger("file_agent.web.runs")
 
 
 class RunManagerError(RuntimeError):
@@ -50,6 +53,11 @@ class RunRateLimitError(RunManagerError):
 class GlobalConcurrencyError(RunManagerError):
     status_code = 503
     code = "GLOBAL_CONCURRENCY"
+
+
+class RunShuttingDownError(RunManagerError):
+    status_code = 503
+    code = "SERVICE_SHUTTING_DOWN"
 
 
 @dataclass
@@ -128,6 +136,7 @@ class RunManager:
         self._runs: dict[str, RunRecord] = {}
         self._tasks: set[asyncio.Task[None]] = set()
         self._active_count = 0
+        self._accepting_runs = True
         self._session_limiter = SlidingWindowRateLimiter(
             limit=settings.max_runs_per_session_hour,
             clock=clock,
@@ -142,6 +151,8 @@ class RunManager:
         return self._active_count
 
     def start(self, session: SessionRecord, *, task: str, client_ip: str) -> RunRecord:
+        if not self._accepting_runs:
+            raise RunShuttingDownError("The Web service is shutting down.")
         normalized = task.strip()
         if not normalized:
             raise RunManagerError("Task must not be empty.")
@@ -211,15 +222,37 @@ class RunManager:
         self._session_limiter.discard(session_id)
 
     async def shutdown(self) -> None:
+        self._accepting_runs = False
         for record in self._runs.values():
             if record.status == "running":
                 record.cancel_event.set()
-        if self._tasks:
-            await asyncio.gather(*tuple(self._tasks), return_exceptions=True)
+        tasks = tuple(self._tasks)
+        if not tasks:
+            return
+        done, pending = await asyncio.wait(
+            tasks,
+            timeout=self.settings.shutdown_grace_seconds,
+        )
+        for task in pending:
+            task.cancel()
+        if pending:
+            cancelled, still_pending = await asyncio.wait(
+                pending,
+                timeout=min(1.0, self.settings.shutdown_grace_seconds),
+            )
+            done |= cancelled
+            if still_pending:
+                LOGGER.warning(
+                    "web_shutdown_incomplete category=TASK_CANCEL_TIMEOUT count=%d",
+                    len(still_pending),
+                )
+        if done:
+            await asyncio.gather(*done, return_exceptions=True)
 
     async def _execute(self, record: RunRecord, session: SessionRecord) -> None:
         sink = WebEventSink(record.backlog)
         model: ModelClient | None = None
+        final_payload = record.public_result()
         try:
             model = self._factory()
             limits = AgentLimits(
@@ -248,6 +281,12 @@ class RunManager:
             record.reason = exc.safe_message
             record.reason_code = exc.code
             final_payload = record.public_result()
+        except asyncio.CancelledError:
+            record.status = "cancelled"
+            record.reason = "The run was cancelled during server shutdown."
+            record.reason_code = "SERVER_SHUTDOWN"
+            final_payload = record.public_result()
+            raise
         except Exception:  # noqa: BLE001 - background failures stay inside the run record
             record.status = "failed"
             record.reason = "The run failed inside the Web execution boundary."

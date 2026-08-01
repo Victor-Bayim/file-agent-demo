@@ -37,6 +37,7 @@ def test_home_static_api_404_and_security_headers(web_client: TestClient) -> Non
         assert response.headers["x-content-type-options"] == "nosniff"
         assert response.headers["referrer-policy"] == "no-referrer"
         assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["x-robots-tag"] == "noindex, nofollow"
         assert "default-src 'self'" in response.headers["content-security-policy"]
         assert "access-control-allow-origin" not in response.headers
 
@@ -203,3 +204,69 @@ def test_reset_returns_409_while_session_run_is_active(web_client: TestClient) -
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "ACTIVE_RUN"
+
+
+def test_healthz_is_minimal_and_has_no_session_run_or_model_side_effect(
+    web_settings: WebSettings,
+) -> None:
+    factory_calls = 0
+
+    def factory() -> FakeModelClient:
+        nonlocal factory_calls
+        factory_calls += 1
+        return FakeModelClient([model_response("Unexpected.")])
+
+    app = create_web_app(settings=web_settings, model_client_factory=factory)
+    with TestClient(app) as client:
+        sessions_before = list(web_settings.session_root.iterdir())
+        runs_before = list(web_settings.web_runs_root.iterdir())
+
+        response = client.get("/healthz")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
+        assert response.text == '{"status":"ok"}'
+        assert app.state.session_manager.sessions == {}
+        assert app.state.run_manager.active_count == 0
+        assert list(web_settings.session_root.iterdir()) == sessions_before
+        assert list(web_settings.web_runs_root.iterdir()) == runs_before
+        assert factory_calls == 0
+
+
+def test_public_mode_disables_documentation_and_sets_secure_cookie(
+    web_settings: WebSettings,
+    simple_model_factory: Callable[[], FakeModelClient],
+) -> None:
+    settings = web_settings.model_copy(update={"public_mode": True, "cookie_secure": True})
+    app = create_web_app(settings=settings, model_client_factory=simple_model_factory)
+
+    with TestClient(app) as client:
+        for path in ("/docs", "/redoc", "/openapi.json"):
+            assert client.get(path).status_code == 404
+        response = client.post(
+            "/api/auth",
+            json={"access_code": settings.access_code.get_secret_value()},
+        )
+        assert response.status_code == 200
+        assert "Secure" in response.headers["set-cookie"]
+
+
+def test_public_mode_still_requires_model_credentials_without_injected_fake(
+    web_settings: WebSettings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = web_settings.model_copy(update={"public_mode": True, "cookie_secure": True})
+    for variable in (
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_BASE_URL",
+        "DEEPSEEK_MODEL",
+        "DEEPSEEK_THINKING",
+        "DEEPSEEK_TEMPERATURE",
+        "DEEPSEEK_MAX_OUTPUT_TOKENS",
+        "DEEPSEEK_TIMEOUT_SECONDS",
+        "DEEPSEEK_MAX_RETRIES",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+
+    with pytest.raises(WebConfigurationError, match="credentials are required"):
+        create_web_app(settings=settings)

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import app.web.sessions as sessions_module
 from app.web.config import WebSettings
 from app.web.sessions import SessionActiveRunError, SessionCapacityError, SessionManager
 
@@ -96,3 +97,24 @@ def test_reset_refuses_an_active_session(web_settings: WebSettings) -> None:
 
     session.active_run_id = None
     manager.shutdown()
+
+
+def test_shutdown_contains_cleanup_failure_and_clears_memory(
+    web_settings: WebSettings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    manager = SessionManager(web_settings)
+    manager.start()
+    manager.create_session(client_ip="one")
+
+    def fail_cleanup(target: Path, root: Path) -> bool:
+        del target, root
+        raise OSError("unsafe detail must not be logged")
+
+    monkeypatch.setattr(sessions_module, "_remove_controlled_tree", fail_cleanup)
+    manager.shutdown()
+
+    assert manager.sessions == {}
+    assert "category=OS_ERROR" in caplog.text
+    assert "unsafe detail" not in caplog.text

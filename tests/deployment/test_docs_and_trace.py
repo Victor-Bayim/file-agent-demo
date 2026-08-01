@@ -29,7 +29,8 @@ def test_readme_has_required_public_repository_sections_without_secrets() -> Non
         "## Repository structure",
     ):
         assert heading in readme
-    assert readme.count("DEPLOYED_DEMO_URL") == 1
+    assert "DEPLOYED_DEMO_URL" not in readme
+    assert "https://file-agent-demo.onrender.com" in readme
     assert "Gate 2's first real attempt" in readme
     assert "T2's first exact-format attempt failed" in readme
     assert "sync: false" in readme

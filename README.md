@@ -8,7 +8,7 @@ model adapter and can be replaced without changing the Agent loop.
 
 ## Online demo
 
-Demo URL: **DEPLOYED_DEMO_URL**
+Demo URL: **https://file-agent-demo.onrender.com**
 
 The Access Code is never committed to this repository and must be provided separately to a
 reviewer. A free Render instance can require a cold start on first access. Each browser Session
